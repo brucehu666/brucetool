@@ -7,7 +7,8 @@
 在使用本工具前，请先安装以下必要的 Python 库：
 ```bash
 pip install tkinter pynput pyautogui
-
+```
+# 使用说明
 本脚本用于鼠标键盘的记录， 配合clirunstudy.py使用, 用于自动化学习干部在线的内容
 先安装tkinter, pynput, pyautogui 等库 使用 pip install tkinter pynput pyautogui
 执行python automouse.py
