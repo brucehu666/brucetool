@@ -20,7 +20,15 @@ class PDFProcessor:
                 'processing': '处理中...',
                 'success': '处理完成',
                 'error': '处理出错',
-                'none': '无'
+                'none': '无',
+                'table_no': '序号',
+                'table_page': '页码',
+                'table_submitter': '提交人',
+                'table_content': '内容',
+                'table_comment': '批注',
+                'table_link': '链接',
+                'info': '信息',
+                'warning': '警告'
             },
             'en': {
                 'title': 'PDF Processor',
@@ -32,7 +40,15 @@ class PDFProcessor:
                 'processing': 'Processing...',
                 'success': 'Processing completed',
                 'error': 'Error occurred',
-                'none': 'None'
+                'none': 'None',
+                'table_no': 'No.',
+                'table_page': 'Page',
+                'table_submitter': 'Submitter',
+                'table_content': 'Content',
+                'table_comment': 'Comment',
+                'table_link': 'Link',
+                'info': 'Information',
+                'warning': 'Warning'
             }
         }
         self.pdf_file = None
@@ -104,7 +120,7 @@ class PDFProcessor:
 
     def extract_links(self):
         if not self.pdf_file:
-            messagebox.showwarning("警告", self.get_text('no_file'))
+            messagebox.showwarning(self.get_text('warning'), self.get_text('no_file'))
             return
 
         try:
@@ -129,18 +145,15 @@ class PDFProcessor:
 
             print("提取的链接数据：", links)  # 添加调试输出
             self.generate_html('links', links)
-            messagebox.showinfo("信息", self.get_text('success'))
+            messagebox.showinfo(self.get_text('info'), self.get_text('success'))
 
         except Exception as e:
             print(f"提取链接时出错：{str(e)}")  # 添加错误详细信息
-            content = annot.get('contents', self.get_text('none'))
-            author = annot.get('title', annot.get('author', self.get_text('none')))
-            annotations.append((page_num, author, content))
-            return
+            messagebox.showerror(self.get_text('error'), f"{self.get_text('error')}: {str(e)}")
 
     def extract_annotations(self):
         if not self.pdf_file:
-            messagebox.showwarning("警告", self.get_text('no_file'))
+            messagebox.showwarning(self.get_text('warning'), self.get_text('no_file'))
             return
 
         try:
@@ -156,11 +169,11 @@ class PDFProcessor:
 
             print("提取的注释数据：", annotations)  # 添加调试输出
             self.generate_html('annotations', annotations)
-            messagebox.showinfo("信息", self.get_text('success'))
+            messagebox.showinfo(self.get_text('info'), self.get_text('success'))
 
         except Exception as e:
             print(f"提取注释时出错：{str(e)}")  # 添加错误详细信息
-            messagebox.showerror("错误", f"{self.get_text('error')}: {str(e)}")
+            messagebox.showerror(self.get_text('error'), f"{self.get_text('error')}: {str(e)}")
 
     def generate_html(self, type_: str, data: List[Tuple]):
         print(f"开始生成HTML，类型：{type_}，数据：", data)  # 添加调试输出
@@ -177,9 +190,11 @@ class PDFProcessor:
                 tr:nth-child(even) {{ background-color: #f9f9f9; }}
                 a {{ color: #0066cc; text-decoration: none; }}
                 a:hover {{ text-decoration: underline; }}
+                h1 {{ color: #333; font-size: 24px; margin: 20px 0; }}
             </style>
         </head>
         <body>
+            <h1>{filename}</h1>
             <table>
                 <thead>
                     <tr>
@@ -195,7 +210,7 @@ class PDFProcessor:
         """
 
         if type_ == 'links':
-            headers = "<th>序号</th><th>页码</th><th>内容</th><th>链接</th>"
+            headers = f"<th>{self.get_text('table_no')}</th><th>{self.get_text('table_page')}</th><th>{self.get_text('table_content')}</th><th>{self.get_text('table_link')}</th>"
             rows = ""
             for idx, (page, content, uri) in enumerate(data, 1):
                 rows += f"<tr><td>{idx}</td><td>{page}</td><td>{content}</td>"
@@ -204,12 +219,17 @@ class PDFProcessor:
                 else:
                     rows += f"<td>{uri}</td></tr>"
         else:  # annotations
-            headers = "<th>序号</th><th>页码</th><th>提交人</th><th>内容</th>"
+            headers = f"<th>{self.get_text('table_no')}</th><th>{self.get_text('table_page')}</th><th>{self.get_text('table_submitter')}</th><th>{self.get_text('table_comment')}</th>"
             rows = ""
             for idx, (page, author, content) in enumerate(data, 1):
                 rows += f"<tr><td>{idx}</td><td>{page}</td><td>{author}</td><td>{content}</td></tr>"
 
-        html_content = html_template.format(headers=headers, rows=rows, type_=type_)
+        html_content = html_template.format(
+            headers=headers,
+            rows=rows,
+            type_=type_,
+            filename=os.path.basename(self.pdf_file)
+        )
         # 获取当前时间，格式化为字符串
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         # 根据类型选择前缀
