@@ -13,7 +13,7 @@ from pdfminer.layout import LTTextContainer
 
 class PDFProcessor:
     def __init__(self):
-        self.current_language = 'zh'  # 默认使用中文
+        self.current_language = 'en'  # 默认使用中文
         self.translations = {
             'zh': {
                 'title': 'PDF处理工具',
