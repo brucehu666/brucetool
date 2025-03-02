@@ -39,7 +39,7 @@ class PDFProcessor:
                 'title': 'PDF Processor',
                 'select_file': 'Select PDF File',
                 'extract_links': 'Extract Links',
-                'extract_annotations': 'Extract Annotations',
+                'extract_annotations': 'Extract Comments',
                 'switch_language': '切换语言 (Switch Language)',
                 'no_file': 'Please select a PDF file first',
                 'processing': 'Processing...',
@@ -243,7 +243,7 @@ class PDFProcessor:
             for idx, (page, content, uri) in enumerate(data, 1):
                 rows += f"<tr><td>{idx}</td><td>{page}</td><td>{content}</td>"
                 if uri != self.get_text('none'):
-                    rows += f"<td><a href='{uri}'>{uri}</a></td></tr>"
+                    rows += f"<td><a href='{uri}' target='_blank'>{uri}</a></td></tr>"
                 else:
                     rows += f"<td>{uri}</td></tr>"
         else:  # annotations

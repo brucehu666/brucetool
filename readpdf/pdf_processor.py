@@ -34,7 +34,7 @@ class PDFProcessor:
                 'title': 'PDF Processor',
                 'select_file': 'Select PDF File',
                 'extract_links': 'Extract Links',
-                'extract_annotations': 'Extract Annotations',
+                'extract_annotations': 'Extract Comments',
                 'switch_language': '切换语言 (Switch Language)',
                 'no_file': 'Please select a PDF file first',
                 'processing': 'Processing...',
@@ -133,14 +133,9 @@ class PDFProcessor:
                             uri = annot["uri"]
                             # 优化链接文本提取逻辑
                             content = annot.get("contents")  # 首选contents属性
-                            if not content:  # 如果contents为空，尝试其他属性
-                                # 尝试从Border属性中提取文本
-                                Rect_text = annot.get("data", {}).get("Rect", [])
-                                if Rect_text and isinstance(Rect_text, list):
-                                    content = f"链接{Rect_text}"
-                                else:
-                                    # 如果没有任何文本信息，使用URI的一部分作为显示文本
-                                    content = uri.split("/")[-1] if "/" in uri else uri
+                            if not content:
+                                # 如果没有任何文本信息，使用URI的一部分作为显示文本
+                                content = uri.split("/")[-1] if "/" in uri else uri
                             links.append((page_num, content, uri))
 
             print("提取的链接数据：", links)  # 添加调试输出
@@ -215,7 +210,7 @@ class PDFProcessor:
             for idx, (page, content, uri) in enumerate(data, 1):
                 rows += f"<tr><td>{idx}</td><td>{page}</td><td>{content}</td>"
                 if uri != self.get_text('none'):
-                    rows += f"<td><a href='{uri}'>{uri}</a></td></tr>"
+                    rows += f"<td><a href='{uri}' target='_blank'>{uri}</a></td></tr>"
                 else:
                     rows += f"<td>{uri}</td></tr>"
         else:  # annotations
