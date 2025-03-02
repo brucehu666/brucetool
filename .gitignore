@@ -1,6 +1,7 @@
 # Python virtual environment
 myenv/
 build/
+dist/
 # Python cache files
 __pycache__/
 *.py[cod]
