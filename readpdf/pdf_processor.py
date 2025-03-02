@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 
 class PDFProcessor:
     def __init__(self):
-        self.current_language = 'en'  # 默认使用中文
+        self.current_language = 'en'  # 默认使用英文
         self.translations = {
             'zh': {
                 'title': 'PDF处理工具',
@@ -28,7 +28,8 @@ class PDFProcessor:
                 'table_comment': '批注',
                 'table_link': '链接',
                 'info': '信息',
-                'warning': '警告'
+                'warning': '警告',
+                'about': '关于'
             },
             'en': {
                 'title': 'PDF Processor',
@@ -48,7 +49,8 @@ class PDFProcessor:
                 'table_comment': 'Comment',
                 'table_link': 'Link',
                 'info': 'Information',
-                'warning': 'Warning'
+                'warning': 'Warning',
+                'about': 'About'
             }
         }
         self.pdf_file = None
@@ -99,6 +101,14 @@ class PDFProcessor:
         )
         self.lang_btn.grid(row=3, column=0, columnspan=2, pady=5)
 
+        # 添加关于按钮
+        self.about_btn = ttk.Button(
+            main_frame,
+            text=self.get_text('about'),
+            command=self.show_about
+        )
+        self.about_btn.grid(row=4, column=0, columnspan=2, pady=5)
+
     def get_text(self, key: str) -> str:
         return self.translations[self.current_language][key]
 
@@ -109,6 +119,70 @@ class PDFProcessor:
         if self.pdf_file:
             self.file_label.config(text=os.path.basename(self.pdf_file))
 
+    def show_about(self):
+        about_text = """
+PDF 处理工具 v1.0
+
+作者: Bruce Hu
+邮箱: scisdpc@gmail.com
+GitHub: https://github.com/brucehu666
+
+功能特点:
+- PDF 链接提取
+- PDF 注释提取
+- 多语言支持
+        """
+        messagebox.showinfo(self.get_text('about'), about_text)
+
+    def __init__(self):
+        self.current_language = 'en'
+        self.translations = {
+            'zh': {
+                'title': 'PDF处理工具',
+                'select_file': '选择PDF文件',
+                'extract_links': '提取链接',
+                'extract_annotations': '提取注释',
+                'switch_language': '切换语言 (Switch Language)',
+                'no_file': '请先选择PDF文件',
+                'processing': '处理中...',
+                'success': '处理完成',
+                'error': '处理出错',
+                'none': '无',
+                'table_no': '序号',
+                'table_page': '页码',
+                'table_submitter': '提交人',
+                'table_content': '内容',
+                'table_comment': '批注',
+                'table_link': '链接',
+                'info': '信息',
+                'warning': '警告',
+                'about': '关于'
+            },
+            'en': {
+                'title': 'PDF Processor',
+                'select_file': 'Select PDF File',
+                'extract_links': 'Extract Links',
+                'extract_annotations': 'Extract Comments',
+                'switch_language': 'Switch Language (切换语言)',
+                'no_file': 'Please select a PDF file first',
+                'processing': 'Processing...',
+                'success': 'Processing completed',
+                'error': 'Error occurred',
+                'none': 'None',
+                'table_no': 'No.',
+                'table_page': 'Page',
+                'table_submitter': 'Submitter',
+                'table_content': 'Content',
+                'table_comment': 'Comment',
+                'table_link': 'Link',
+                'info': 'Information',
+                'warning': 'Warning',
+                'about': 'About'
+            }
+        }
+        self.pdf_file = None
+        self.setup_ui()
+
     def switch_language(self):
         self.current_language = 'en' if self.current_language == 'zh' else 'zh'
         # 更新UI文本
@@ -117,6 +191,7 @@ class PDFProcessor:
         self.extract_links_btn.config(text=self.get_text('extract_links'))
         self.extract_annotations_btn.config(text=self.get_text('extract_annotations'))
         self.lang_btn.config(text=self.get_text('switch_language'))
+        self.about_btn.config(text=self.get_text('about'))  # 添加这行
 
     def extract_links(self):
         if not self.pdf_file:
