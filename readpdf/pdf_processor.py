@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import pdfplumber
+import PyPDF2
 import webbrowser
 import os
 import datetime
@@ -36,7 +36,7 @@ class PDFProcessor:
                 'select_file': 'Select PDF File',
                 'extract_links': 'Extract Links',
                 'extract_annotations': 'Extract Comments',
-                'switch_language': '切换语言 (Switch Language)',
+                'switch_language': 'Switch Language (切换语言)',
                 'no_file': 'Please select a PDF file first',
                 'processing': 'Processing...',
                 'success': 'Processing completed',
@@ -121,67 +121,11 @@ class PDFProcessor:
 
     def show_about(self):
         about_text = """
-PDF 处理工具 v1.0
-
-作者: Bruce Hu
-邮箱: scisdpc@gmail.com
-GitHub: https://github.com/brucehu666
-
-功能特点:
-- PDF 链接提取
-- PDF 注释提取
-- 多语言支持
+PDF Processor v1.0
+Author: Bruce Hu & AI
+github: https://github.com/brucehu666
         """
         messagebox.showinfo(self.get_text('about'), about_text)
-
-    def __init__(self):
-        self.current_language = 'en'
-        self.translations = {
-            'zh': {
-                'title': 'PDF处理工具',
-                'select_file': '选择PDF文件',
-                'extract_links': '提取链接',
-                'extract_annotations': '提取注释',
-                'switch_language': '切换语言 (Switch Language)',
-                'no_file': '请先选择PDF文件',
-                'processing': '处理中...',
-                'success': '处理完成',
-                'error': '处理出错',
-                'none': '无',
-                'table_no': '序号',
-                'table_page': '页码',
-                'table_submitter': '提交人',
-                'table_content': '内容',
-                'table_comment': '批注',
-                'table_link': '链接',
-                'info': '信息',
-                'warning': '警告',
-                'about': '关于'
-            },
-            'en': {
-                'title': 'PDF Processor',
-                'select_file': 'Select PDF File',
-                'extract_links': 'Extract Links',
-                'extract_annotations': 'Extract Comments',
-                'switch_language': 'Switch Language (切换语言)',
-                'no_file': 'Please select a PDF file first',
-                'processing': 'Processing...',
-                'success': 'Processing completed',
-                'error': 'Error occurred',
-                'none': 'None',
-                'table_no': 'No.',
-                'table_page': 'Page',
-                'table_submitter': 'Submitter',
-                'table_content': 'Content',
-                'table_comment': 'Comment',
-                'table_link': 'Link',
-                'info': 'Information',
-                'warning': 'Warning',
-                'about': 'About'
-            }
-        }
-        self.pdf_file = None
-        self.setup_ui()
 
     def switch_language(self):
         self.current_language = 'en' if self.current_language == 'zh' else 'zh'
@@ -191,7 +135,7 @@ GitHub: https://github.com/brucehu666
         self.extract_links_btn.config(text=self.get_text('extract_links'))
         self.extract_annotations_btn.config(text=self.get_text('extract_annotations'))
         self.lang_btn.config(text=self.get_text('switch_language'))
-        self.about_btn.config(text=self.get_text('about'))  # 添加这行
+        self.about_btn.config(text=self.get_text('about'))
 
     def extract_links(self):
         if not self.pdf_file:
@@ -200,18 +144,30 @@ GitHub: https://github.com/brucehu666
 
         try:
             links = []
-            with pdfplumber.open(self.pdf_file) as pdf:
-                for page_num, page in enumerate(pdf.pages, 1):
-                    for annot in page.annots:
-                        if annot.get("uri"):
-                            print("完整数据", annot)
-                            uri = annot["uri"]
-                            # 优化链接文本提取逻辑
-                            content = annot.get("contents")  # 首选contents属性
-                            if not content:
-                                # 如果没有任何文本信息，使用URI的一部分作为显示文本
-                                content = uri.split("/")[-1] if "/" in uri else uri
-                            links.append((page_num, content, uri))
+            with open(self.pdf_file, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page_num, page in enumerate(pdf_reader.pages, 1):
+                    # Extract links from annotations
+                    if '/Annots' in page:
+                        annotations = page['/Annots']
+                        for i in range(len(annotations)):
+                            annot = annotations[i].get_object()
+                            if annot.get('/Subtype') == '/Link' and '/A' in annot:
+                                action = annot['/A']
+                                if '/URI' in action:
+                                    uri = action['/URI']
+                                    # Try to get content
+                                    content = ""
+                                    if '/Contents' in annot:
+                                        content = annot['/Contents']
+                                    elif '/Rect' in annot:
+                                        rect = annot['/Rect']
+                                        content = f"rect{rect}"
+                                    else:
+                                        content = uri.split('/')[-1]
+                                    
+                                    print("完整数据", annot)
+                                    links.append((page_num, content, uri))
 
             print("提取的链接数据：", links)  # 添加调试输出
             self.generate_html('links', links)
@@ -228,14 +184,20 @@ GitHub: https://github.com/brucehu666
 
         try:
             annotations = []
-            with pdfplumber.open(self.pdf_file) as pdf:
-                for page_num, page in enumerate(pdf.pages, 1):
-                    for annot in page.annots:
-                        title = annot.get('title')
-                        if title is not None:
-                            content = annot.get('contents', self.get_text('none'))
-                            author = annot.get('title', annot.get('author', self.get_text('none')))
-                            annotations.append((page_num, author, content))
+            with open(self.pdf_file, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page_num, page in enumerate(pdf_reader.pages, 1):
+                    if '/Annots' in page:
+                        annots = page['/Annots']
+                        for i in range(len(annots)):
+                            annot = annots[i].get_object()
+                            if annot.get('/Subtype') in ['/Text', '/Highlight', '/Underline', '/StrikeOut', '/FreeText']:
+                                title = annot.get('/T', '')
+                                content = annot.get('/Contents', self.get_text('none'))
+                                content = content.replace('\r\n', '\n')
+                                content = content.replace('\r', '\n')
+                                author = title or annot.get('/Author', self.get_text('none'))
+                                annotations.append((page_num, author, content))
 
             print("提取的注释数据：", annotations)  # 添加调试输出
             self.generate_html('annotations', annotations)
@@ -292,6 +254,7 @@ GitHub: https://github.com/brucehu666
             headers = f"<th>{self.get_text('table_no')}</th><th>{self.get_text('table_page')}</th><th>{self.get_text('table_submitter')}</th><th>{self.get_text('table_comment')}</th>"
             rows = ""
             for idx, (page, author, content) in enumerate(data, 1):
+                content = content.replace('\n', '<br>')
                 rows += f"<tr><td>{idx}</td><td>{page}</td><td>{author}</td><td>{content}</td></tr>"
 
         html_content = html_template.format(
