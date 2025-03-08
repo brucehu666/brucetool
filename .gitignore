@@ -2,6 +2,8 @@
 myenv/
 build/
 dist/
+# Ignore the venv_infocenter virtual environment
+infocenter/venv_infocenter/
 # Python cache files
 __pycache__/
 *.py[cod]
