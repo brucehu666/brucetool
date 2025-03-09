@@ -63,7 +63,7 @@ class PDFProcessor:
 
         # 创建主框架
         main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame.grid(row=0, column=0, sticky="".join((tk.W, tk.E, tk.N, tk.S)))
 
         # 文件选择按钮
         self.select_btn = ttk.Button(
@@ -149,9 +149,13 @@ github: https://github.com/brucehu666
                 for page_num, page in enumerate(pdf_reader.pages, 1):
                     # Extract links from annotations
                     if '/Annots' in page:
-                        annotations = page['/Annots']
+                        annotations = page['/Annots'].get_object()
                         for i in range(len(annotations)):
-                            annot = annotations[i].get_object()
+                            try:
+                                annot = annotations[i].get_object()
+                            except AttributeError:
+                                # 如果遇到不支持 __getitem__ 方法的对象，跳过该对象
+                                continue
                             if annot.get('/Subtype') == '/Link' and '/A' in annot:
                                 action = annot['/A']
                                 if '/URI' in action:
@@ -188,16 +192,19 @@ github: https://github.com/brucehu666
                 pdf_reader = PyPDF2.PdfReader(file)
                 for page_num, page in enumerate(pdf_reader.pages, 1):
                     if '/Annots' in page:
-                        annots = page['/Annots']
-                        for i in range(len(annots)):
-                            annot = annots[i].get_object()
-                            if annot.get('/Subtype') in ['/Text', '/Highlight', '/Underline', '/StrikeOut', '/FreeText']:
-                                title = annot.get('/T', '')
-                                content = annot.get('/Contents', self.get_text('none'))
-                                content = content.replace('\r\n', '\n')
-                                content = content.replace('\r', '\n')
-                                author = title or annot.get('/Author', self.get_text('none'))
-                                annotations.append((page_num, author, content))
+                        try:
+                            annots = page['/Annots']
+                            for annot_obj in annots:
+                                annot = annot_obj.get_object()
+                                if annot.get('/Subtype') in ['/Text', '/Highlight', '/Underline', '/StrikeOut', '/FreeText']:
+                                    title = annot.get('/T', '')
+                                    content = annot.get('/Contents', self.get_text('none'))
+                                    content = content.replace('\r\n', '\n')
+                                    content = content.replace('\r', '\n')
+                                    author = title or annot.get('/Author', self.get_text('none'))
+                                    annotations.append((page_num, author, content))
+                        except Exception as e:
+                            print(f"处理注释时出错: {e}")
 
             print("提取的注释数据：", annotations)  # 添加调试输出
             self.generate_html('annotations', annotations)
@@ -261,13 +268,18 @@ github: https://github.com/brucehu666
             headers=headers,
             rows=rows,
             type_=type_,
-            filename=os.path.basename(self.pdf_file)
+            filename=os.path.basename(self.pdf_file) if self.pdf_file else "No File Selected"
         )
         # 获取当前时间，格式化为字符串
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         # 根据类型选择前缀
         prefix = "readlinks" if type_ == "links" else "readcomments"
-        output_file = os.path.join(os.path.dirname(self.pdf_file), f"{prefix}_{current_time}.html")
+        # 确保self.pdf_file不为空，避免路径处理出错
+        if self.pdf_file:
+            output_file = os.path.join(os.path.dirname(self.pdf_file), f"{prefix}_{current_time}.html")
+        else:
+            # 如果self.pdf_file为空，可以设置一个默认的输出目录，这里以当前工作目录为例
+            output_file = os.path.join(os.getcwd(), f"{prefix}_{current_time}.html")
 
         print(f"生成的HTML文件路径：{output_file}")  # 添加调试输出
         with open(output_file, 'w', encoding='utf-8') as f:

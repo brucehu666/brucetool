@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>时区时间对比工具</title>
+    <style>
+        .container {
+    position: relative;
+}
+
+.quick-timezones {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.city-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    padding: 8px 12px;
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.city-group span {
+    font-weight: bold;
+    color: #333;
+}
+
+button.std-time {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+button.summer-time {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+button.std-time,
+button.summer-time {
+    border: 1px solid rgba(0,0,0,0.1);
+    padding: 6px 12px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+button.std-time:hover,
+button.summer-time:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .timeline-container {
+            position: relative;
+            height: 60px;
+            margin: 40px 0;
+        }
+
+        #timeSlider {
+            width: 100%;
+            margin-top: 30px;
+        }
+
+        .scale-labels {
+            position: absolute;
+            width: 100%;
+            height: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .scale-label {
+            position: absolute;
+            transform: translateX(-50%);
+        }
+
+        .timezone-block {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .timezone-name {
+            width: 100px;
+            font-weight: bold;
+        }
+
+        .time-scale {
+            flex-grow: 1;
+            height: 40px;
+            background: #eee;
+            position: relative;
+            margin: 0 20px;
+        }
+
+        .time-marker {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background: red;
+            left: 0;
+            transform: translateX(-50%);
+        }
+
+        .current-time {
+            width: 60px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>时区时间对比工具</h2>
+        <div class="quick-timezones">
+            <div class="city-group">
+                <span>上海:</span>
+                <button class="std-time" onclick="addTimezone(8)">标准时 (UTC+8)</button>
+            </div>
+            <div class="city-group">
+                <span>波士顿:</span>
+                <button class="std-time" onclick="addTimezone(-5)">标准时 (UTC-5)</button>
+                <button class="summer-time" onclick="addTimezone(-4)">夏令时 (UTC-4)</button>
+            </div>
+            <div class="city-group">
+                <span>奥斯汀:</span>
+                <button class="std-time" onclick="addTimezone(-6)">标准时 (UTC-6)</button>
+                <button class="summer-time" onclick="addTimezone(-5)">夏令时 (UTC-5)</button>
+            </div>
+            <div class="city-group">
+                <span>科克:</span>
+                <button class="std-time" onclick="addTimezone(0)">标准时 (UTC+0)</button>
+                <button class="summer-time" onclick="addTimezone(1)">夏令时 (UTC+1)</button>
+            </div>
+            <div class="city-group">
+                <span>西班牙:</span>
+                <button class="std-time" onclick="addTimezone(1)">标准时 (UTC+1)</button>
+            </div>
+        </div>
+        
+        <div class="timeline-container">
+            <div class="scale-labels" id="mainScale"></div>
+            <input type="range" id="timeSlider" min="0" max="24" step="0.5" value="0">
+        </div>
+
+        <div id="timezonesContainer">
+        </div>
+    </div>
+
+    <script>
+        function updateAllTimes() {
+            const mainHour = parseFloat(timeSlider.value) % 24;
+            updateScaleLabels(mainHour);
+            
+            document.querySelectorAll('.timezone-block').forEach(block => {
+                const utcOffset = parseInt(block.dataset.offset, 10) || 0;
+                const absolutePosition = ((mainHour + 24) % 24) / 24 * 100;
+                const marker = block.querySelector('.time-marker');
+                const timeDisplay = block.querySelector('.current-time');
+                
+                marker.style.left = `${absolutePosition}%`;
+                const displayHour = (mainHour + utcOffset + 24) % 24;
+                timeDisplay.textContent = `${Math.floor(displayHour)}:${(displayHour % 1 * 60).toFixed(0).padStart(2, '0')}`;
+            });
+        }
+
+        function updateScaleLabels(currentHour) {
+            const scaleContainer = document.getElementById('mainScale');
+            scaleContainer.innerHTML = '';
+            
+            for (let i = 0; i <= 24; i++) {
+                const label = document.createElement('div');
+                label.className = 'scale-label';
+                label.style.left = `${(i / 24) * 100}%`;
+                label.textContent = `${i}h`;
+                scaleContainer.appendChild(label);
+            }
+        }
+
+        function addTimezone(offset) {
+            if(isNaN(offset) || offset < -12 || offset > 14) {
+                alert('请输入-12到14之间的整数');
+                return;
+            }
+            const container = document.getElementById('timezonesContainer');
+            
+            const timezoneBlock = document.createElement('div');
+            timezoneBlock.className = 'timezone-block';
+            timezoneBlock.dataset.offset = offset;
+            
+            timezoneBlock.innerHTML = `
+                <div class="timezone-name">UTC${offset >= 0 ? '+' : ''}${offset}</div>
+                <button class="delete-btn" data-offset="${offset}">×</button>
+                <div class="time-scale">
+                    <div class="time-marker"></div>
+                </div>
+                <div class="current-time">00:00</div>
+            `;
+            
+            container.appendChild(timezoneBlock);
+        }
+
+        // 初始化示例时区
+        document.addEventListener('DOMContentLoaded', () => {
+            updateScaleLabels(12);
+            [0, 8, 1].forEach(offset => addTimezone(offset));
+            updateAllTimes();
+        });
+
+        // 事件监听
+        document.getElementById('timeSlider').addEventListener('input', updateAllTimes);
+
+        // 添加控制按钮
+        const controlDiv = document.createElement('div');
+        controlDiv.innerHTML = `
+            <button id="addTimezoneBtn" style="margin-top:20px;padding:8px 16px;">+ 添加时区</button>
+            <input type="number" id="offsetInput" style="margin-left:10px;width:80px;" placeholder="时区偏移">
+        `;
+        document.querySelector('.container').appendChild(controlDiv);
+
+        document.getElementById('addTimezoneBtn').addEventListener('click', () => {
+            const offset = parseInt(document.getElementById('offsetInput').value);
+            if(!isNaN(offset)) {
+                addTimezone(offset);
+                updateAllTimes();
+            }
+        });
+
+        // 添加删除事件处理
+        document.getElementById('timezonesContainer').addEventListener('click', (e) => {
+            if(e.target.closest('.delete-btn')) {
+                if(confirm('确定要删除该时区吗？')) {
+                    e.target.closest('.timezone-block').remove();
+                    updateAllTimes();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+<style>
+    .delete-btn {
+        background: #ff4444;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        margin-left: 10px;
+        transition: background 0.3s;
+    }
+    
+    .delete-btn:hover {
+        background: #cc0000;
+    }
+    
+    .timezone-name {
+        width: 120px;
+    }
+</style>
