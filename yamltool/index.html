@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>本地YAML校验工具</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .input-group {
+            flex: 3;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .sidebar {
+            flex: 1;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        #addBtn {
+            background-color: #2196F3;
+            margin-bottom: 20px;
+        }
+        .error { color: #d32f2f; }
+        .success { color: #388e3c; }
+    </style>
+</head>
+<body>
+    <h2>YAML校验工具</h2>
+    <button id="addBtn">+ 添加YAML输入</button>
+    <div class="container">
+        <div class="input-group" id="inputContainer"></div>
+        <div class="sidebar">
+            <h3>编辑注意事项</h3>
+            <ul>
+                <li>使用空格缩进表示层级关系</li>
+                <li>键值对使用冒号+空格分隔</li>
+                <li>列表项使用短横线开头</li>
+                <li>字符串不需要引号包裹</li>
+                <li>注释使用#号开头</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 初始化第一个输入区域
+        document.addEventListener('DOMContentLoaded', createInputArea);
+
+        // 创建新的输入区域
+        function createInputArea() {
+            const container = document.getElementById('inputContainer');
+            const index = container.children.length + 1;
+            moduleValidators[index] = [];
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'yaml-wrapper';
+            wrapper.innerHTML = `
+                <h3>YAML ${index}</h3>
+                <textarea id="yaml${index}" placeholder="输入YAML内容..."></textarea>
+                <div>
+                    <button onclick="copyYaml(${index})">复制内容</button>
+                    <button onclick="validateYaml(${index})">校验内容</button>
+                    <button onclick="showRulesPanel(${index})">配置规则</button>
+                </div>
+                <div class="rules-panel" id="rules${index}">
+                    <h4>校验规则配置</h4>
+                    <div class="rules-list" id="rulesList${index}"></div>
+                    <button onclick="addNewRule(${index})">+ 添加规则</button>
+                </div>
+                <div id="result${index}"></div>
+            `;
+            container.appendChild(wrapper);
+        }
+
+        // 添加新输入区域
+        document.getElementById('addBtn').addEventListener('click', createInputArea);
+
+        // 复制功能实现
+        function copyYaml(index) {
+            const textarea = document.getElementById(`yaml${index}`);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(textarea.value)
+                    .then(() => showResult(index, '内容已复制到剪贴板', 'success'))
+                    .catch(() => fallbackCopy(textarea));
+            } else {
+                fallbackCopy(textarea);
+            }
+        }
+
+        // 旧版复制方法
+        function fallbackCopy(textarea) {
+            textarea.select();
+            document.execCommand('copy');
+            showResult(Array.from(textarea.parentNode.parentNode.children)
+                .indexOf(textarea.parentNode), '内容已复制', 'success');
+        }
+
+        // YAML解析器
+        function parseYaml(content) {
+            const result = {};
+            const lines = content.split('\n');
+            let currentPath = [result];
+            let lastIndent = 0;
+
+            lines.forEach(line => {
+                const match = line.match(/^( *)([^#:]+): ?(.*?)( *#.*)?$/);
+                if (!match) return;
+
+                const [_, indent, key, value] = match;
+                const indentLevel = indent.length;
+                
+                // 处理缩进层级
+                while (indentLevel < lastIndent) {
+                    currentPath.pop();
+                    lastIndent -= 2;
+                }
+
+                const currentObj = currentPath[currentPath.length - 1];
+                if (value) {
+                    currentObj[key] = value;
+                } else {
+                    currentObj[key] = {};
+                    currentPath.push(currentObj[key]);
+                    lastIndent = indentLevel;
+                }
+            });
+            return result;
+        }
+
+        // 校验规则模块
+        let moduleValidators = {};
+
+        // 主校验函数
+        function validateYaml(index) {
+            const content = document.getElementById(`yaml${index}`).value;
+            const resultDiv = document.getElementById(`result${index}`);
+            
+            try {
+                const parsed = parseYaml(content);
+                const errors = [];
+
+                // 执行模块校验规则
+                (moduleValidators[index] || []).forEach(rule => {
+                    let isValid = true;
+                    switch (rule.type) {
+                        case 'presence':
+                            const path = rule.params.path?.split('.') || [];
+                            let current = parsed;
+                            for (const p of path) {
+                                if (!current[p]) {
+                                    isValid = false;
+                                    break;
+                                }
+                                current = current[p];
+                            }
+                            break;
+                        // 其他规则类型处理
+                    }
+                    if (!isValid) {
+                        errors.push(`校验失败: ${rule.params.path}`);
+                    }
+                });
+
+                if (errors.length === 0) {
+                    showResult(index, '✓ YAML格式正确', 'success');
+                } else {
+                    showResult(index, errors.join('<br>'), 'error');
+                }
+            } catch (e) {
+                showResult(index, `解析错误: ${e.message}`, 'error');
+            }
+        }
+
+        function addNewRule(index) {
+            const rulesList = document.getElementById(`rulesList${index}`);
+            const ruleId = Date.now();
+            const ruleItem = document.createElement('div');
+            ruleItem.className = 'rule-item';
+            ruleItem.innerHTML = `
+                <select onchange="updateRuleType(${index}, ${ruleId}, this.value)">
+                    <option value="presence">字段存在性</option>
+                    <option value="type">类型校验</option>
+                </select>
+                <input type="text" placeholder="字段路径" onchange="updateRuleParam(${index}, ${ruleId}, 'path', this.value)">
+                <button onclick="removeRule(${index}, ${ruleId})">删除</button>
+            `;
+            rulesList.appendChild(ruleItem);
+            if (!moduleValidators[index]) moduleValidators[index] = [];
+            moduleValidators[index].push({ id: ruleId, type: 'presence', params: { path: '' } });
+        }
+
+        function updateRuleType(index, ruleId, type) {
+            const rules = moduleValidators[index] || [];
+            const rule = rules.find(r => r.id === ruleId);
+            if (rule) rule.type = type;
+        }
+
+        function updateRuleParam(index, ruleId, key, value) {
+            const rules = moduleValidators[index] || [];
+            const rule = rules.find(r => r.id === ruleId);
+            if (rule) rule.params[key] = value;
+        }
+
+        function removeRule(index, ruleId) {
+            moduleValidators[index] = (moduleValidators[index] || []).filter(r => r.id !== ruleId);
+            const ruleItem = document.querySelector(`[onclick="removeRule(${index}, ${ruleId})"]`).parentNode;
+            ruleItem.remove();
+        }
+
+        // 显示结果
+        function showResult(index, message, type) {
+            const div = document.getElementById(`result${index}`);
+            div.className = type;
+            div.innerHTML = message;
+        }
+    </script>
+</body>
+</html>
