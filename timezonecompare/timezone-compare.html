@@ -145,13 +145,24 @@ button.summer-time:hover {
                 <button class="summer-time" onclick="addTimezone(-5)">夏令时 (UTC-5)</button>
             </div>
             <div class="city-group">
+                <span>加州:</span>
+                <button class="std-time" onclick="addTimezone(-8)">标准时 (UTC-8)</button>
+                <button class="summer-time" onclick="addTimezone(-7)">夏令时 (UTC-7)</button>
+            </div>
+            <div class="city-group">
                 <span>科克:</span>
                 <button class="std-time" onclick="addTimezone(0)">标准时 (UTC+0)</button>
                 <button class="summer-time" onclick="addTimezone(1)">夏令时 (UTC+1)</button>
             </div>
+            
             <div class="city-group">
                 <span>西班牙:</span>
                 <button class="std-time" onclick="addTimezone(1)">标准时 (UTC+1)</button>
+            </div>
+            <!-- add a new timezone group IST -->
+            <div class="city-group">
+                <span>IST:</span>
+                <button class="std-time" onclick="addTimezone(5.5)">标准时 (UTC+5:30)</button>
             </div>
         </div>
         
@@ -170,7 +181,7 @@ button.summer-time:hover {
             updateScaleLabels(mainHour);
             
             document.querySelectorAll('.timezone-block').forEach(block => {
-                const utcOffset = parseInt(block.dataset.offset, 10) || 0;
+                const utcOffset = parseFloat(block.dataset.offset) || 0;
                 const absolutePosition = ((mainHour + 24) % 24) / 24 * 100;
                 const marker = block.querySelector('.time-marker');
                 const timeDisplay = block.querySelector('.current-time');
@@ -194,33 +205,37 @@ button.summer-time:hover {
             }
         }
 
-        function addTimezone(offset) {
-            if(isNaN(offset) || offset < -12 || offset > 14) {
-                alert('请输入-12到14之间的整数');
-                return;
-            }
-            const container = document.getElementById('timezonesContainer');
-            
-            const timezoneBlock = document.createElement('div');
-            timezoneBlock.className = 'timezone-block';
-            timezoneBlock.dataset.offset = offset;
-            
-            timezoneBlock.innerHTML = `
-                <div class="timezone-name">UTC${offset >= 0 ? '+' : ''}${offset}</div>
-                <button class="delete-btn" data-offset="${offset}">×</button>
-                <div class="time-scale">
-                    <div class="time-marker"></div>
-                </div>
-                <div class="current-time">00:00</div>
-            `;
-            
-            container.appendChild(timezoneBlock);
-        }
+function addTimezone(offset) {
+    if (isNaN(offset) || offset < -12.5 || offset > 14.5) {
+        alert('请输入-12.5到14.5之间的整数或浮点数');
+        return;
+    }
 
+    const container = document.getElementById('timezonesContainer');
+
+    const timezoneBlock = document.createElement('div');
+    timezoneBlock.className = 'timezone-block';
+    timezoneBlock.dataset.offset = offset;
+
+    const intOffset = offset;
+    // const intOffset = Math.floor(offset);
+    const fractionalOffset = (offset - intOffset) * 60;
+
+    timezoneBlock.innerHTML = `
+        <div class="timezone-name">UTC${intOffset >= 0 ? '+' : ''}${intOffset}${fractionalOffset ? `:${fractionalOffset}` : ''}</div>
+        <button class="delete-btn" data-offset="${offset}">×</button>
+        <div class="time-scale">
+            <div class="time-marker"></div>
+        </div>
+        <div class="current-time">00:00</div>
+    `;
+
+    container.appendChild(timezoneBlock);
+}
         // 初始化示例时区
         document.addEventListener('DOMContentLoaded', () => {
             updateScaleLabels(12);
-            [0, 8, 1].forEach(offset => addTimezone(offset));
+            [0, 8].forEach(offset => addTimezone(offset));
             updateAllTimes();
         });
 
@@ -231,12 +246,13 @@ button.summer-time:hover {
         const controlDiv = document.createElement('div');
         controlDiv.innerHTML = `
             <button id="addTimezoneBtn" style="margin-top:20px;padding:8px 16px;">+ 添加时区</button>
-            <input type="number" id="offsetInput" style="margin-left:10px;width:80px;" placeholder="时区偏移">
+            <input type="number" id="offsetInput" step="0.5" style="margin-left:10px;width:80px;" placeholder="时区偏移">
         `;
         document.querySelector('.container').appendChild(controlDiv);
 
         document.getElementById('addTimezoneBtn').addEventListener('click', () => {
-            const offset = parseInt(document.getElementById('offsetInput').value);
+            const offset = parseFloat(document.getElementById('offsetInput').value);
+            // const offset = parseInt(document.getElementById('offsetInput').value);
             if(!isNaN(offset)) {
                 addTimezone(offset);
                 updateAllTimes();
@@ -253,6 +269,7 @@ button.summer-time:hover {
             }
         });
     </script>
+    
 </body>
 </html>
 <style>
